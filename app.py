@@ -1,9 +1,9 @@
 
 import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import os
+import time
 from io import BytesIO
 from google import genai
 from dotenv import load_dotenv
@@ -13,170 +13,256 @@ from dotenv import load_dotenv
 # =====================================================
 
 st.set_page_config(
-    page_title="ADIWIA",
-    page_icon="🔎",
+    page_title="ADIWIA - Asisten Digital Audit",
+    page_icon="📊",
     layout="wide"
 )
 
-st.title("🔎 ADIWIA")
+load_dotenv()
+
+MODEL_NAME = "gemini-3.8-flash"
+
+API_KEY = os.getenv("GEMINI_API_KEY")
+
+try:
+    if not API_KEY:
+        API_KEY = st.secrets.get("GEMINI_API_KEY")
+except Exception:
+    API_KEY = None
+
+client = None
+
+if API_KEY:
+    try:
+        client = genai.Client(api_key=API_KEY)
+    except Exception:
+        client = None
+
+
+# =====================================================
+# 2. FUNGSI GEMINI
+# =====================================================
+
+def ask_gemini(prompt, retries=3):
+
+    if client is None:
+        return "Gemini API belum dikonfigurasi. Periksa Streamlit Secrets."
+
+    for attempt in range(retries):
+
+        try:
+            response = client.models.generate_content(
+                model=MODEL_NAME,
+                contents=prompt
+            )
+
+            return response.text or "Gemini tidak memberikan jawaban."
+
+        except Exception as e:
+
+            error_message = str(e)
+
+            temporary_error = any(
+                code in error_message
+                for code in ["503", "429", "500", "504", "UNAVAILABLE"]
+            )
+
+            if temporary_error and attempt < retries - 1:
+                time.sleep(2 ** (attempt + 1))
+                continue
+
+            if "503" in error_message or "UNAVAILABLE" in error_message:
+                return (
+                    "Layanan Gemini sedang mengalami kepadatan pengguna. "
+                    "Silakan coba kembali beberapa saat lagi."
+                )
+
+            if "429" in error_message:
+                return (
+                    "Batas penggunaan Gemini API sedang tercapai. "
+                    "Silakan tunggu sebelum mencoba kembali."
+                )
+
+            return f"Terjadi kesalahan Gemini API: {error_message}"
+
+    return "Gemini belum dapat memberikan respons."
+
+
+# =====================================================
+# 3. JUDUL APLIKASI
+# =====================================================
+
+st.title("📊 ADIWIA")
+
 st.subheader("Asisten Digital Audit Widianti & Adinda")
 
 st.write(
     "Asisten digital berbasis Artificial Intelligence "
-    "untuk membantu pemeriksaan, analisis, dan evaluasi "
-    "data keuangan."
+    "untuk membantu pemeriksaan, analisis, dan evaluasi data keuangan."
 )
 
 st.divider()
 
-# =====================================================
-# 2. KONEKSI GEMINI AI
-# =====================================================
-
-load_dotenv()
-
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-
-try:
-    if "GEMINI_API_KEY" in st.secrets:
-        GEMINI_API_KEY = st.secrets["GEMINI_API_KEY"]
-except Exception:
-    pass
-
-client = None
-
-if GEMINI_API_KEY:
-    try:
-        client = genai.Client(api_key=GEMINI_API_KEY)
-    except Exception as e:
-        st.warning(f"Koneksi Gemini belum berhasil: {e}")
-
-MODEL_NAME = "gemini-3.8-flash"
 
 # =====================================================
-# 3. UPLOAD DATA AUDIT
+# 4. UPLOAD DATA AUDIT
 # =====================================================
 
 st.header("📂 1. Upload Data Audit")
 
 uploaded_file = st.file_uploader(
     "Unggah data keuangan dalam format Excel",
-    type=["xlsx", "xls"]
+    type=["xlsx"]
 )
 
 if uploaded_file is None:
-    st.info(
-        "Silakan unggah file Excel untuk memulai "
-        "pemeriksaan menggunakan ADIWIA."
-    )
+    st.info("Silakan unggah file Excel untuk memulai pemeriksaan.")
     st.stop()
 
 try:
     df = pd.read_excel(uploaded_file)
 
+    df.columns = [str(col).strip() for col in df.columns]
+
     if df.empty:
-        st.error("File Excel tidak memiliki data.")
+        st.warning("File Excel tidak memiliki data transaksi.")
         st.stop()
 
-    if len(df.columns) == 0:
-        st.error("File tidak memiliki kolom.")
-        st.stop()
+    st.success("Data berhasil diunggah!")
 
 except Exception as e:
-    st.error(f"Gagal membaca file: {e}")
+    st.error(f"Gagal membaca file Excel: {e}")
     st.stop()
 
-st.success("Data berhasil diunggah!")
 
 # =====================================================
-# 4. INFORMASI DATA
+# 5. INFORMASI DATA
 # =====================================================
 
 st.header("📊 2. Informasi Data")
 
+total_transaksi = len(df)
+total_kolom = len(df.columns)
+total_kosong = int(df.isna().sum().sum())
+
 col1, col2, col3 = st.columns(3)
 
-col1.metric("Jumlah Transaksi", f"{len(df):,}")
-col2.metric("Jumlah Kolom", len(df.columns))
-col3.metric(
-    "Data Kosong",
-    int(df.isna().sum().sum())
-)
+col1.metric("Jumlah Transaksi", total_transaksi)
+col2.metric("Jumlah Kolom", total_kolom)
+col3.metric("Data Kosong", total_kosong)
 
 st.subheader("Pratinjau Data")
-st.dataframe(df, use_container_width=True)
+
+st.dataframe(
+    df.head(20),
+    use_container_width=True
+)
+
 
 # =====================================================
-# 5. PEMERIKSAAN KELENGKAPAN DATA
+# 6. PEMERIKSAAN DATA AUDIT
 # =====================================================
 
 st.header("🔍 3. Pemeriksaan Data Audit")
 
 findings = []
-details = {}
 
-# A. Data kosong
+# -----------------------------------------------------
+# A. PEMERIKSAAN DATA KOSONG
+# -----------------------------------------------------
 
-missing_count = int(df.isna().sum().sum())
+st.subheader("Pemeriksaan Kelengkapan Data")
 
-if missing_count > 0:
-    for column, count in df.isna().items():
-        if count:
-            findings.append({
-                "Jenis Temuan": "Data Tidak Lengkap",
-                "Kolom": str(column),
-                "Jumlah": int(count),
-                "Keterangan": (
-                    f"Terdapat {count} data kosong "
-                    f"pada kolom {column}."
-                )
-            })
+missing_summary = df.isna().sum()
 
-details["Data Tidak Lengkap"] = df[
-    df.isna().any(axis=1)
-]
+missing_data = []
 
-# B. Data duplikat
+for column, count in missing_summary.items():
 
-duplicate_mask = df.duplicated(keep=False)
+    if count > 0:
 
-duplicate_count = int(duplicate_mask.sum())
+        missing_data.append({
+            "Kolom": column,
+            "Jumlah Data Kosong": int(count)
+        })
+
+        findings.append({
+            "Jenis Temuan": "Data Kosong",
+            "Keterangan": (
+                f"Kolom {column} memiliki {int(count)} data kosong."
+            )
+        })
+
+if missing_data:
+
+    st.warning("Ditemukan data yang belum lengkap.")
+
+    st.dataframe(
+        pd.DataFrame(missing_data),
+        use_container_width=True
+    )
+
+else:
+    st.success("Tidak ditemukan data kosong.")
+
+
+# -----------------------------------------------------
+# B. PEMERIKSAAN DATA DUPLIKAT
+# -----------------------------------------------------
+
+st.subheader("Pemeriksaan Data Duplikat")
+
+duplicate_rows = df[df.duplicated(keep=False)]
+
+duplicate_count = int(df.duplicated().sum())
 
 if duplicate_count > 0:
+
+    st.warning(
+        f"Ditemukan {duplicate_count} baris data yang terduplikasi."
+    )
+
     findings.append({
         "Jenis Temuan": "Data Duplikat",
-        "Kolom": "Seluruh kolom",
-        "Jumlah": duplicate_count,
         "Keterangan": (
-            "Terdapat baris transaksi yang memiliki "
-            "data identik dan perlu diverifikasi."
+            f"Ditemukan {duplicate_count} baris data duplikat."
         )
     })
 
-details["Data Duplikat"] = df[duplicate_mask]
+    with st.expander("Lihat Detail Data Duplikat"):
 
-# =====================================================
-# 6. PEMERIKSAAN NOMINAL TIDAK WAJAR
-# =====================================================
+        st.dataframe(
+            duplicate_rows,
+            use_container_width=True
+        )
+
+else:
+    st.success("Tidak ditemukan baris data duplikat.")
+
+
+# -----------------------------------------------------
+# C. PEMERIKSAAN NOMINAL TRANSAKSI
+# -----------------------------------------------------
 
 st.subheader("Pemeriksaan Nominal Transaksi")
 
 numeric_columns = df.select_dtypes(
-    include=np.number
+    include="number"
 ).columns.tolist()
 
 amount_candidates = [
     col for col in numeric_columns
-    if any(
-        word in str(col).lower()
-        for word in [
-            "nominal", "jumlah", "amount",
-            "nilai", "actual", "realisasi"
-        ]
-    )
+    if str(col).strip().lower().replace(" ", "_")
+    in [
+        "amount",
+        "amount_usd",
+        "nominal",
+        "jumlah",
+        "nilai",
+        "actual",
+        "realisasi"
+    ]
 ]
-
-unusual_mask = pd.Series(False, index=df.index)
 
 if amount_candidates:
 
@@ -185,406 +271,437 @@ if amount_candidates:
         amount_candidates
     )
 
-    amount_values = pd.to_numeric(
-        df[amount_column],
-        errors="coerce"
-    ).dropna()
+    values = df[amount_column].dropna()
 
-    if len(amount_values) >= 4:
+    if len(values) >= 4:
 
-        q1 = amount_values.quantile(0.25)
-        q3 = amount_values.quantile(0.75)
+        q1 = values.quantile(0.25)
+        q3 = values.quantile(0.75)
         iqr = q3 - q1
 
-        lower_limit = q1 - (1.5 * iqr)
-        upper_limit = q3 + (1.5 * iqr)
+        if iqr > 0:
 
-        numeric_values = pd.to_numeric(
-            df[amount_column],
-            errors="coerce"
-        )
+            lower_limit = q1 - (1.5 * iqr)
+            upper_limit = q3 + (1.5 * iqr)
 
-        unusual_mask = (
-            (numeric_values < lower_limit) |
-            (numeric_values > upper_limit)
-        ).fillna(False)
+            outlier_mask = (
+                (df[amount_column] < lower_limit) |
+                (df[amount_column] > upper_limit)
+            )
 
-        unusual_count = int(unusual_mask.sum())
+            outlier_data = df[outlier_mask]
 
-        if unusual_count > 0:
-            findings.append({
-                "Jenis Temuan": "Nominal Tidak Wajar",
-                "Kolom": str(amount_column),
-                "Jumlah": unusual_count,
-                "Keterangan": (
-                    "Nominal berada di luar batas statistik "
-                    "metode Interquartile Range (IQR)."
+            if not outlier_data.empty:
+
+                st.warning(
+                    f"Ditemukan {len(outlier_data)} transaksi "
+                    "dengan nilai yang tidak biasa."
                 )
-            })
+
+                findings.append({
+                    "Jenis Temuan": "Nominal Tidak Biasa",
+                    "Keterangan": (
+                        f"Ditemukan {len(outlier_data)} transaksi "
+                        f"pada kolom {amount_column} di luar batas IQR."
+                    )
+                })
+
+                with st.expander("Lihat Detail Nominal Tidak Biasa"):
+
+                    st.dataframe(
+                        outlier_data,
+                        use_container_width=True
+                    )
+
+            else:
+                st.success(
+                    "Tidak ditemukan nominal di luar batas IQR."
+                )
+
+        else:
+            st.info(
+                "Nilai transaksi relatif sama sehingga "
+                "pemeriksaan IQR dilewati."
+            )
 
     else:
-        st.info(
-            "Data nominal belum cukup untuk analisis IQR."
-        )
+        st.info("Data belum cukup untuk pemeriksaan IQR.")
 
 else:
     st.info(
-        "Tidak ditemukan kolom nominal yang dikenali. "
-        "Periksa nama kolom pada file Excel."
+        "Kolom nominal belum ditemukan. "
+        "Pastikan terdapat kolom angka yang sesuai."
     )
 
-details["Nominal Tidak Wajar"] = df[unusual_mask]
 
-# =====================================================
-# 7. PEMERIKSAAN DEBIT DAN KREDIT
-# =====================================================
+# -----------------------------------------------------
+# D. PEMERIKSAAN DEBIT DAN KREDIT
+# -----------------------------------------------------
 
 st.subheader("Pemeriksaan Debit dan Kredit")
 
-debit_columns = [
-    col for col in numeric_columns
-    if "debit" in str(col).lower()
+def normalize_column(name):
+    return str(name).strip().lower().replace(" ", "_")
+
+column_lookup = {
+    normalize_column(col): col
+    for col in df.columns
+}
+
+debit_aliases = [
+    "debit",
+    "debet",
+    "debit_amount",
+    "jumlah_debit",
+    "debit_rp"
 ]
 
-credit_columns = [
-    col for col in numeric_columns
-    if "kredit" in str(col).lower()
-    or "credit" in str(col).lower()
+credit_aliases = [
+    "credit",
+    "kredit",
+    "credit_amount",
+    "jumlah_kredit",
+    "kredit_rp"
 ]
 
-imbalance_mask = pd.Series(False, index=df.index)
+debit_column = next(
+    (
+        column_lookup[x]
+        for x in debit_aliases
+        if x in column_lookup
+    ),
+    None
+)
 
-if debit_columns and credit_columns:
+credit_column = next(
+    (
+        column_lookup[x]
+        for x in credit_aliases
+        if x in column_lookup
+    ),
+    None
+)
 
-    debit_col = debit_columns[0]
-    credit_col = credit_columns[0]
+if debit_column and credit_column:
 
-    debit = pd.to_numeric(
-        df[debit_col],
+    debit_total = pd.to_numeric(
+        df[debit_column],
         errors="coerce"
-    )
+    ).sum()
 
-    credit = pd.to_numeric(
-        df[credit_col],
+    credit_total = pd.to_numeric(
+        df[credit_column],
         errors="coerce"
-    )
+    ).sum()
 
-    imbalance_mask = (
-        debit.notna() &
-        credit.notna() &
-        ~np.isclose(
-            debit.fillna(0),
-            credit.fillna(0),
-            atol=0.01
+    col1, col2 = st.columns(2)
+
+    col1.metric("Total Debit", f"{debit_total:,.2f}")
+    col2.metric("Total Kredit", f"{credit_total:,.2f}")
+
+    difference = debit_total - credit_total
+
+    if abs(difference) < 0.01:
+
+        st.success("Total debit dan kredit seimbang.")
+
+    else:
+
+        st.error(
+            f"Debit dan kredit tidak seimbang. "
+            f"Selisih: {difference:,.2f}"
         )
-    )
 
-    imbalance_count = int(imbalance_mask.sum())
-
-    if imbalance_count > 0:
         findings.append({
             "Jenis Temuan": "Debit dan Kredit Tidak Seimbang",
-            "Kolom": f"{debit_col} dan {credit_col}",
-            "Jumlah": imbalance_count,
             "Keterangan": (
-                "Ditemukan perbedaan nilai debit "
-                "dan kredit pada baris transaksi."
+                f"Selisih total debit dan kredit sebesar "
+                f"{difference:,.2f}."
             )
         })
 
-    details["Debit dan Kredit"] = df[imbalance_mask]
-
 else:
+
     st.info(
         "Pemeriksaan debit dan kredit dilewati karena "
         "kolom debit atau kredit tidak tersedia."
     )
 
+
 # =====================================================
-# 8. ANALISIS ANGGARAN DAN REALISASI
+# 7. ANALISIS ANGGARAN DAN REALISASI
 # =====================================================
 
-st.divider()
 st.header("💰 4. Analisis Anggaran dan Realisasi")
 
-budget_columns = [
-    col for col in df.columns
-    if str(col).lower() == "budget"
-]
+budget_column = column_lookup.get("budget")
+actual_column = column_lookup.get("actual")
+category_column = column_lookup.get("category")
 
-actual_columns = [
-    col for col in df.columns
-    if str(col).lower() == "actual"
-]
+if budget_column and actual_column:
 
-budget_available = bool(budget_columns)
-actual_available = bool(actual_columns)
-
-if budget_available and actual_available:
-
-    df["Budget"] = pd.to_numeric(
-        df["Budget"], errors="coerce"
+    budget_values = pd.to_numeric(
+        df[budget_column],
+        errors="coerce"
     )
 
-    df["Actual"] = pd.to_numeric(
-        df["Actual"], errors="coerce"
+    actual_values = pd.to_numeric(
+        df[actual_column],
+        errors="coerce"
     )
 
-    if df[["Budget", "Actual"]].isna().any().any():
-        st.warning(
-            "Ada nilai Budget atau Actual yang kosong "
-            "atau tidak valid. Periksa kembali datanya."
-        )
-        budget_available = False
+    df["Variance"] = budget_values - actual_values
 
-    else:
+    df["Variance %"] = (
+        df["Variance"] /
+        budget_values.replace(0, float("nan"))
+    ) * 100
 
-        df["Variance"] = df["Actual"] - df["Budget"]
+    total_budget = budget_values.sum()
+    total_actual = actual_values.sum()
 
-        df["Variance %"] = np.where(
-            df["Budget"] != 0,
-            df["Variance"] / df["Budget"] * 100,
-            np.nan
-        )
+    variance = total_budget - total_actual
 
-        total_budget = df["Budget"].sum()
-        total_actual = df["Actual"].sum()
-        total_variance = total_actual - total_budget
+    col1, col2, col3 = st.columns(3)
 
-        c1, c2, c3 = st.columns(3)
+    col1.metric("Total Anggaran", f"{total_budget:,.2f}")
+    col2.metric("Total Realisasi", f"{total_actual:,.2f}")
+    col3.metric("Selisih", f"{variance:,.2f}")
 
-        c1.metric(
-            "Total Anggaran",
-            f"{total_budget:,.2f}"
-        )
+    if category_column:
 
-        c2.metric(
-            "Total Realisasi",
-            f"{total_actual:,.2f}"
-        )
+        st.subheader("Grafik Anggaran dan Realisasi")
 
-        c3.metric(
-            "Selisih",
-            f"{total_variance:,.2f}"
+        chart_data = df.groupby(
+            category_column
+        )[[budget_column, actual_column]].sum().reset_index()
+
+        chart_data = chart_data.melt(
+            id_vars=category_column,
+            var_name="Jenis",
+            value_name="Jumlah"
         )
 
-        st.subheader("Hasil Perhitungan Varians")
+        fig = px.bar(
+            chart_data,
+            x=category_column,
+            y="Jumlah",
+            color="Jenis",
+            barmode="group",
+            title="Perbandingan Anggaran dan Realisasi"
+        )
 
-        st.dataframe(
-            df,
+        st.plotly_chart(
+            fig,
             use_container_width=True
         )
 
-        # Grafik anggaran dan realisasi
+    overspending = df[
+        actual_values > budget_values
+    ]
 
-        category_columns = [
-            col for col in df.columns
-            if str(col).lower() == "category"
-        ]
+    if not overspending.empty:
 
-        if category_columns:
+        st.warning(
+            f"Ditemukan {len(overspending)} data "
+            "dengan realisasi melebihi anggaran."
+        )
 
-            fig = px.bar(
-                df,
-                x="Category",
-                y=["Budget", "Actual"],
-                barmode="group",
-                title="Perbandingan Anggaran dan Realisasi"
+        findings.append({
+            "Jenis Temuan": "Realisasi Melebihi Anggaran",
+            "Keterangan": (
+                f"Ditemukan {len(overspending)} data "
+                "dengan realisasi lebih besar daripada anggaran."
             )
+        })
 
-            st.plotly_chart(
-                fig,
+        with st.expander("Lihat Detail Anggaran dan Realisasi"):
+
+            st.dataframe(
+                overspending,
                 use_container_width=True
             )
 
-        # Grafik selisih
-
-        if category_columns:
-
-            fig_variance = px.bar(
-                df,
-                x="Category",
-                y="Variance",
-                color="Variance",
-                title="Analisis Varians per Kategori",
-                color_continuous_scale="RdYlGn"
-            )
-
-            st.plotly_chart(
-                fig_variance,
-                use_container_width=True
-            )
-
-        # Temuan anggaran
-
-        overspending = df[df["Actual"] > df["Budget"]]
-
-        if not overspending.empty:
-            findings.append({
-                "Jenis Temuan": "Realisasi Melebihi Anggaran",
-                "Kolom": "Actual dan Budget",
-                "Jumlah": len(overspending),
-                "Keterangan": (
-                    "Terdapat kategori dengan realisasi "
-                    "lebih besar daripada anggaran."
-                )
-            })
-
-        details["Realisasi Melebihi Anggaran"] = overspending
+    else:
+        st.success(
+            "Tidak ditemukan realisasi yang melebihi anggaran."
+        )
 
 else:
+
     st.info(
         "Analisis anggaran dan realisasi memerlukan "
         "kolom bernama Budget dan Actual."
     )
 
+
 # =====================================================
-# 9. RINGKASAN TEMUAN AUDIT
+# 8. RINGKASAN TEMUAN AUDIT
 # =====================================================
 
-st.divider()
 st.header("🚨 5. Ringkasan Temuan Audit")
 
-result = pd.DataFrame(
-    findings,
-    columns=[
-        "Jenis Temuan",
-        "Kolom",
-        "Jumlah",
-        "Keterangan"
-    ]
-)
+if findings:
 
-if not result.empty:
+    findings_df = pd.DataFrame(findings)
 
     st.warning(
-        f"Terdapat {len(result)} jenis indikasi "
+        f"ADIWIA menemukan {len(findings)} indikasi "
         "yang perlu diperiksa lebih lanjut."
     )
 
     st.dataframe(
-        result,
+        findings_df,
         use_container_width=True
     )
 
 else:
+
+    findings_df = pd.DataFrame(
+        columns=["Jenis Temuan", "Keterangan"]
+    )
+
     st.success(
         "Tidak ditemukan indikasi berdasarkan "
         "pemeriksaan otomatis yang dilakukan."
     )
 
-for title, detail in details.items():
+st.caption(
+    "Catatan: Temuan otomatis merupakan indikator awal "
+    "dan tetap memerlukan verifikasi auditor."
+)
 
-    if not detail.empty:
-
-        with st.expander(f"📋 Lihat detail: {title}"):
-
-            st.dataframe(
-                detail,
-                use_container_width=True
-            )
 
 # =====================================================
-# 10. AI-POWERED AUDIT ANALYSIS
+# 9. AI AUDIT ANALYSIS
 # =====================================================
 
-st.divider()
 st.header("🤖 6. AI Audit Analysis")
 
-if client:
-
-    if st.button("Analisis Temuan dengan ADIWIA AI"):
-
-        with st.spinner(
-            "ADIWIA sedang menganalisis data audit..."
-        ):
-
-            prompt = f"""
-            Anda adalah ADIWIA, asisten digital audit
-            yang membantu analisis data keuangan.
-
-            Analisis data berikut:
-
-            DATA:
-            {df.head(200).to_string(index=False)}
-
-            TEMUAN PEMERIKSAAN:
-            {result.to_string(index=False)}
-
-            Berikan hasil dalam struktur:
-
-            1. Ringkasan hasil pemeriksaan.
-            2. Temuan yang paling perlu diperhatikan.
-            3. Analisis risiko.
-            4. Kemungkinan penyebab yang perlu ditelusuri.
-            5. Dokumen atau bukti pendukung yang perlu diperiksa.
-            6. Rekomendasi tindak lanjut.
-
-            Ketentuan:
-            - Gunakan bahasa Indonesia yang jelas.
-            - Bedakan fakta data dan dugaan.
-            - Jangan mengarang penyebab atau bukti.
-            - Jangan langsung menyimpulkan kecurangan.
-            - Hasil adalah indikasi awal, bukan opini audit.
-            """
-
-            try:
-
-                response = client.models.generate_content(
-                    model=MODEL_NAME,
-                    contents=prompt
-                )
-
-                st.markdown(response.text)
-
-            except Exception as e:
-                st.error(f"Gemini API Error: {e}")
-
-else:
+if client is None:
 
     st.warning(
         "Fitur AI belum aktif. Tambahkan Gemini API Key "
         "pada Streamlit Secrets untuk menggunakannya."
     )
 
+else:
+
+    st.info(
+        "AI membantu memberikan analisis berdasarkan "
+        "data dan hasil pemeriksaan otomatis."
+    )
+
+    if st.button("Mulai Analisis AI"):
+
+        with st.spinner("ADIWIA sedang menganalisis data..."):
+
+            summary = f"""
+            Jumlah transaksi: {len(df)}
+            Jumlah kolom: {len(df.columns)}
+            Jumlah data kosong: {total_kosong}
+            Jumlah duplikat: {duplicate_count}
+            Temuan pemeriksaan: {findings}
+            """
+
+            sample_data = df.head(100).to_string(index=False)
+
+            prompt = f"""
+            Kamu adalah ADIWIA, Asisten Digital Audit.
+
+            Lakukan analisis awal terhadap data keuangan berikut.
+
+            INFORMASI DATA:
+            {summary}
+
+            DATA TRANSAKSI:
+            {sample_data}
+
+            Susun analisis dengan bagian:
+
+            1. Gambaran umum data.
+            2. Hasil pemeriksaan data.
+            3. Indikasi risiko atau ketidakwajaran.
+            4. Hal-hal yang perlu diperiksa auditor.
+            5. Rekomendasi tindak lanjut.
+
+            Gunakan bahasa Indonesia yang jelas dan mudah dipahami.
+
+            Jangan menyatakan adanya kecurangan tanpa bukti.
+            Bedakan indikasi dan kesimpulan audit.
+            """
+
+            result = ask_gemini(prompt)
+
+            st.session_state["audit_result"] = result
+
+    if "audit_result" in st.session_state:
+
+        st.subheader("Hasil Analisis ADIWIA")
+
+        st.markdown(
+            st.session_state["audit_result"]
+        )
+
+
 # =====================================================
-# 11. DOWNLOAD LAPORAN AUDIT
+# 10. DOWNLOAD LAPORAN AUDIT
 # =====================================================
 
-st.divider()
 st.header("📥 7. Download Laporan Audit")
 
-output = BytesIO()
+try:
 
-with pd.ExcelWriter(
-    output,
-    engine="openpyxl"
-) as writer:
+    output = BytesIO()
 
-    df.to_excel(
-        writer,
-        sheet_name="Data Audit",
-        index=False
+    with pd.ExcelWriter(
+        output,
+        engine="openpyxl"
+    ) as writer:
+
+        df.to_excel(
+            writer,
+            sheet_name="Data Transaksi",
+            index=False
+        )
+
+        pd.DataFrame(
+            missing_data,
+            columns=["Kolom", "Jumlah Data Kosong"]
+        ).to_excel(
+            writer,
+            sheet_name="Data Kosong",
+            index=False
+        )
+
+        findings_df.to_excel(
+            writer,
+            sheet_name="Temuan Audit",
+            index=False
+        )
+
+        duplicate_rows.to_excel(
+            writer,
+            sheet_name="Data Duplikat",
+            index=False
+        )
+
+    output.seek(0)
+
+    st.download_button(
+        label="📥 Download Laporan Audit Excel",
+        data=output,
+        file_name="Laporan_Audit_ADIWIA.xlsx",
+        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
 
-    result.to_excel(
-        writer,
-        sheet_name="Temuan Audit",
-        index=False
-    )
+except Exception as e:
 
-st.download_button(
-    label="Download Laporan ADIWIA (Excel)",
-    data=output.getvalue(),
-    file_name="Laporan_Audit_ADIWIA.xlsx",
-    mime=(
-        "application/vnd.openxmlformats-officedocument."
-        "spreadsheetml.sheet"
-    )
-)
+    st.error(f"Gagal membuat laporan: {e}")
+
 
 # =====================================================
-# 12. FOOTER
+# 11. FOOTER
 # =====================================================
 
 st.divider()
@@ -594,7 +711,6 @@ st.caption(
 )
 
 st.caption(
-    "Sistem pendukung pemeriksaan audit. "
-    "Seluruh indikasi temuan harus diverifikasi "
-    "oleh auditor sebelum dijadikan kesimpulan."
+    "Aplikasi ini membantu pemeriksaan awal data keuangan. "
+    "Seluruh hasil tetap memerlukan verifikasi auditor."
 )

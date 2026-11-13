@@ -548,66 +548,7 @@ else:
     )
 
 # =====================================================
-# 11. CHAT DENGAN ADIWIA
-# =====================================================
-
-st.divider()
-st.header("💬 7. Chat dengan ADIWIA")
-
-if client:
-
-    user_question = st.text_input(
-        "Tuliskan pertanyaan tentang data audit:",
-        placeholder="Contoh: Apa temuan yang paling berisiko?"
-    )
-
-    if st.button("Kirim Pertanyaan"):
-
-        if user_question.strip():
-
-            with st.spinner(
-                "ADIWIA sedang menyiapkan jawaban..."
-            ):
-
-                prompt = f"""
-                Anda adalah ADIWIA, asisten digital audit.
-
-                Berikut data keuangan:
-                {df.head(200).to_string(index=False)}
-
-                Berikut temuan pemeriksaan:
-                {result.to_string(index=False)}
-
-                Pertanyaan pengguna:
-                {user_question}
-
-                Jawab menggunakan bahasa Indonesia.
-                Berdasarkan data yang tersedia.
-                Jelaskan alasan jawaban.
-                Jangan mengarang informasi yang tidak tersedia.
-                """
-
-                try:
-
-                    answer = client.models.generate_content(
-                        model=MODEL_NAME,
-                        contents=prompt
-                    )
-
-                    st.markdown(answer.text)
-
-                except Exception as e:
-                    st.error(f"Gemini API Error: {e}")
-
-else:
-
-    st.info(
-        "Chat ADIWIA akan aktif setelah Gemini API Key "
-        "dikonfigurasi."
-    )
-
-# =====================================================
-# 12. DOWNLOAD LAPORAN AUDIT
+# 11. DOWNLOAD LAPORAN AUDIT
 # =====================================================
 
 st.divider()
@@ -643,7 +584,7 @@ st.download_button(
 )
 
 # =====================================================
-# 13. FOOTER
+# 12. FOOTER
 # =====================================================
 
 st.divider()

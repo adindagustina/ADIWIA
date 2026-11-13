@@ -828,20 +828,18 @@ Jangan mengarang informasi yang tidak terdapat dalam data.
 st.header("📥 7. Download Laporan Audit")
 
 try:
-
     output = BytesIO()
 
-    with pd.ExcelWriter(
-        output,
-        engine="openpyxl"
-    ) as writer:
+    with pd.ExcelWriter(output, engine="openpyxl") as writer:
 
+        # 1. Seluruh Data Transaksi
         df.to_excel(
             writer,
             sheet_name="Data Transaksi",
             index=False
         )
 
+        # 2. Data Kosong
         pd.DataFrame(
             missing_data,
             columns=["Kolom", "Jumlah Data Kosong"]
@@ -851,15 +849,64 @@ try:
             index=False
         )
 
+        # 3. Seluruh Temuan Audit
         findings_df.to_excel(
             writer,
-            sheet_name="Temuan Audit",
+            sheet_name="Ringkasan Temuan",
             index=False
         )
 
+        # 4. Data Duplikat
         duplicate_rows.to_excel(
             writer,
             sheet_name="Data Duplikat",
+            index=False
+        )
+
+        # 5. Data Outlier
+        outlier_report = pd.DataFrame()
+
+        if "outlier_rows" in locals() and isinstance(outlier_rows, pd.DataFrame):
+            outlier_report = outlier_rows
+
+        outlier_report.to_excel(
+            writer,
+            sheet_name="Data Outlier",
+            index=False
+        )
+
+        # 6. Hasil Pemeriksaan Debit dan Kredit
+        debit_credit_report = pd.DataFrame()
+
+        if "debit_total" in locals() and "credit_total" in locals():
+            debit_credit_report = pd.DataFrame({
+                "Keterangan": [
+                    "Total Debit",
+                    "Total Kredit",
+                    "Selisih"
+                ],
+                "Jumlah": [
+                    debit_total,
+                    credit_total,
+                    debit_total - credit_total
+                ]
+            })
+
+        debit_credit_report.to_excel(
+            writer,
+            sheet_name="Pemeriksaan Debit Kredit",
+            index=False
+        )
+
+        # 7. Perbandingan Anggaran dan Realisasi
+        budget_report = pd.DataFrame()
+
+        if "budget_df" in locals() and isinstance(budget_df, pd.DataFrame):
+            budget_report = budget_df
+
+        budget_report.to_excel(
+            writer,
+            sheet_name="Anggaran Realisasi",
             index=False
         )
 
@@ -873,9 +920,7 @@ try:
     )
 
 except Exception as e:
-
     st.error(f"Gagal membuat laporan: {e}")
-
 
 # =====================================================
 # 11. FOOTER

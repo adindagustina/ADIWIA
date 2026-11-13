@@ -51,7 +51,7 @@ if GEMINI_API_KEY:
     except Exception as e:
         st.warning(f"Koneksi Gemini belum berhasil: {e}")
 
-MODEL_NAME = "gemini-2.5-flash"
+MODEL_NAME = "gemini-3.8-flash"
 
 # =====================================================
 # 3. UPLOAD DATA AUDIT

@@ -130,8 +130,16 @@ st.markdown(
         background: rgba(255,255,255,.07);
     }}
     /* sembunyikan bulatan radio */
-    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child {{
+    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:not(:has(p)),
+    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-of-type:not(:has(p)),
+    [data-testid="stSidebar"] [data-baseweb="radio"] > div:not(:has(p)) {{
         display: none !important;
+        width: 0 !important; height: 0 !important;
+        margin: 0 !important; padding: 0 !important;
+        opacity: 0 !important; visibility: hidden !important;
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:has(p) {{
+        margin-left: 0 !important; padding-left: 0 !important;
     }}
     /* kotak ikon */
     [data-testid="stSidebar"] div[role="radiogroup"] > label::before {{

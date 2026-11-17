@@ -37,17 +37,22 @@ LIGHT_BG = "#F4F6F9"
 # ---------------------------------------------------------
 # Ikon menu (SVG garis) -> dipakai lewat CSS
 # ---------------------------------------------------------
+def _stroke(inner):
+    return ('<g fill="none" stroke="__C__" stroke-width="1.8" '
+            'stroke-linecap="round" stroke-linejoin="round">' + inner + '</g>')
+
+
 SVG_ICONS = {
-    "Dashboard": '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
-    "Upload Data Audit": '<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>',
-    "Informasi Data": '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
-    "Pemeriksaan Data Audit": '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
-    "Analisis Anggaran dan Realisasi": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
-    "Fraud Detection": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12.01" y2="16.5"/>',
-    "Risk Assessment": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
-    "Ringkasan Temuan Audit": '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
-    "AI Audit Analysis": '<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="5"/><line x1="15" y1="1" x2="15" y2="5"/><line x1="9" y1="19" x2="9" y2="23"/><line x1="15" y1="19" x2="15" y2="23"/><line x1="1" y1="9" x2="5" y2="9"/><line x1="1" y1="15" x2="5" y2="15"/><line x1="19" y1="9" x2="23" y2="9"/><line x1="19" y1="15" x2="23" y2="15"/>',
-    "Download Laporan Audit": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+    "Dashboard": '<path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/>',
+    "Upload Data Audit": '<path d="M19.35 10.04A7.49 7.49 0 0 0 12 4C9.11 4 6.6 5.64 5.35 8.04A5.994 5.994 0 0 0 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM14 13v4h-4v-4H7l5-5 5 5h-3z"/>',
+    "Informasi Data": '<ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 8.5v3c0 1.66 3.58 3 8 3s8-1.34 8-3v-3c0 1.66-3.58 3-8 3s-8-1.34-8-3z"/><path d="M4 13.5v3c0 1.66 3.58 3 8 3s8-1.34 8-3v-3c0 1.66-3.58 3-8 3s-8-1.34-8-3z"/>',
+    "Pemeriksaan Data Audit": '<path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z"/>',
+    "Analisis Anggaran dan Realisasi": '<rect x="3" y="14" width="5" height="7" rx="1"/><rect x="10" y="9" width="5" height="12" rx="1"/><rect x="17" y="3" width="5" height="18" rx="1"/>',
+    "Fraud Detection": '<path fill-rule="evenodd" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zM11 7h2v6h-2zM11 15h2v2h-2z"/>',
+    "Risk Assessment": '<path fill-rule="evenodd" d="M12 1L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm-2 16l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/>',
+    "Ringkasan Temuan Audit": '<path fill-rule="evenodd" d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6zM8 8h4v1.8H8zM8 12h8v1.8H8zM8 16h8v1.8H8z"/>',
+    "AI Audit Analysis": _stroke('<rect x="5" y="5" width="14" height="14" rx="3"/><circle cx="9.5" cy="10" r="1.2"/><circle cx="14.5" cy="14" r="1.2"/><path d="M9.5 11.2v2.3h2.8M14.5 12.8v-2.3h-2.8"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/>'),
+    "Download Laporan Audit": _stroke('<path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/><path d="M12 3v12M7 10l5 5 5-5"/>'),
 }
 
 MENU_ITEMS = list(SVG_ICONS.keys())
@@ -55,9 +60,8 @@ MENU_ITEMS = list(SVG_ICONS.keys())
 
 def svg_data_uri(inner, color):
     svg = (
-        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
-        f'stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
-        f"{inner}</svg>"
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" '
+        f'fill="{color}">' + inner.replace("__C__", color) + "</svg>"
     )
     return "url(\"data:image/svg+xml;utf8," + quote(svg) + "\")"
 
@@ -110,8 +114,8 @@ st.markdown(
         height: 1px; background: rgba(255,255,255,.28); margin: 18px 4px 20px 4px;
     }}
     .aw-menu-title {{
-        color: {GOLD} !important; font-weight: 700; font-size: 16px;
-        letter-spacing: .5px; margin: 0 0 8px 6px;
+        color: {GOLD} !important; font-weight: 700; font-size: 15px;
+        letter-spacing: .3px; margin: 0 0 8px 6px;
     }}
     .aw-menu-title * {{ color: {GOLD} !important; }}
 
@@ -119,7 +123,7 @@ st.markdown(
     [data-testid="stSidebar"] div[role="radiogroup"] {{ gap: 2px; }}
     [data-testid="stSidebar"] div[role="radiogroup"] > label {{
         display: flex; align-items: center; gap: 14px;
-        padding: 10px 10px; border-radius: 10px; cursor: pointer;
+        padding: 8px 6px; border-radius: 8px; cursor: pointer;
         width: 100%; transition: background .15s ease;
     }}
     [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
@@ -133,14 +137,14 @@ st.markdown(
     [data-testid="stSidebar"] div[role="radiogroup"] > label::before {{
         content: ""; flex: 0 0 24px; width: 24px; height: 24px;
         background-repeat: no-repeat; background-position: center;
-        background-size: 22px 22px;
+        background-size: 21px 21px;
     }}
     [data-testid="stSidebar"] div[role="radiogroup"] > label p {{
-        font-size: 16px; font-weight: 500; margin: 0;
+        font-size: 15px; font-weight: 500; margin: 0;
     }}
     /* menu aktif -> emas */
     [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {{
-        background: rgba(241,196,83,.10);
+        background: transparent;
     }}
     [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p {{
         color: {GOLD} !important; font-weight: 700;

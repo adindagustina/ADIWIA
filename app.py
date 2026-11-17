@@ -37,32 +37,59 @@ st.markdown(
     [data-testid="stSidebar"] {{ background: linear-gradient(180deg, {NAVY}, #203A59); }}
     [data-testid="stSidebar"] * {{ color: white !important; }}
     .aw-logo {{
-        width: 76px; height: 76px; margin: 4px auto 12px auto;
+        width: 82px; height: 82px; margin: 6px auto 14px auto;
         position: relative; display: flex; justify-content: center;
-        align-items: center; background: linear-gradient(145deg, {NAVY_LIGHT}, {NAVY});
-        border: 2px solid {GOLD}; border-radius: 19px;
-        box-shadow: 0 5px 15px rgba(0,0,0,.20); overflow: hidden;
+        align-items: center; background: #101D30;
+        border: 1.5px solid {GOLD}; border-radius: 22px;
+        box-shadow: 0 7px 18px rgba(0,0,0,.24); overflow: hidden;
+    }}
+    .aw-logo:before {{
+        content: ""; position: absolute; inset: 6px;
+        border: 1px solid rgba(214,174,88,.35); border-radius: 16px;
     }}
     .aw-logo .aw-a {{
-        color: #F4D58A; font-family: Georgia, serif; font-size: 48px;
-        font-weight: bold; font-style: italic; position: absolute;
-        left: 12px; top: 7px; z-index: 2;
+        color: #F7F3E9; font-family: Georgia, 'Times New Roman', serif;
+        font-size: 53px; font-weight: 700; font-style: italic;
+        position: absolute; left: 12px; top: 4px; z-index: 2;
+        line-height: 1; text-shadow: 2px 2px 0 rgba(0,0,0,.18);
     }}
     .aw-logo .aw-w {{
-        color: white; font-family: Georgia, serif; font-size: 43px;
-        font-weight: bold; font-style: italic; position: absolute;
-        right: 8px; bottom: 5px; z-index: 1;
+        color: #E2BD70; font-family: Georgia, 'Times New Roman', serif;
+        font-size: 48px; font-weight: 700; font-style: italic;
+        position: absolute; right: 7px; bottom: 4px; z-index: 1;
+        line-height: 1; text-shadow: 2px 2px 0 rgba(0,0,0,.22);
     }}
     .aw-logo .aw-line {{
-        position: absolute; width: 48px; height: 2px;
-        background: {GOLD}; transform: rotate(-45deg); opacity: .9;
+        position: absolute; width: 51px; height: 2px;
+        background: linear-gradient(90deg, transparent, {GOLD}, transparent);
+        transform: rotate(-48deg); opacity: .95; z-index: 3;
     }}
     .hero {{
-        background: linear-gradient(120deg, {NAVY}, {NAVY_LIGHT});
-        color: white; padding: 28px; border-radius: 18px; margin-bottom: 18px;
+        background: linear-gradient(115deg, #101D30 0%, {NAVY} 58%, #34516F 100%);
+        color: white; padding: 30px 32px; border-radius: 18px; margin-bottom: 22px;
+        box-shadow: 0 8px 22px rgba(20,36,58,.12);
     }}
-    .hero h1 {{ color: white; margin-bottom: 6px; }}
-    .hero p {{ color: #E8EDF4; }}
+    .hero h1 {{ color: #F1D18A; margin-bottom: 4px; letter-spacing: 2px; }}
+    .hero h3 {{ color: white; margin-top: 0; }}
+    .hero p {{ color: #E8EDF4; max-width: 850px; line-height: 1.65; }}
+    .feature-grid {{
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+        column-gap: 34px; row-gap: 18px; margin: 12px 0 22px 0;
+    }}
+    .feature-item {{
+        display: flex; gap: 13px; align-items: flex-start;
+        padding: 7px 0; border: none; outline: none; background: transparent;
+    }}
+    .feature-icon {{
+        min-width: 38px; height: 38px; display: flex; align-items: center;
+        justify-content: center; border-radius: 11px; background: #E9EEF4;
+        font-size: 19px;
+    }}
+    .feature-title {{ color: #172A42; font-weight: 700; margin: 0 0 3px 0; }}
+    .feature-desc {{ color: #64748B; font-size: 13px; line-height: 1.5; margin: 0; }}
+    @media (max-width: 700px) {{
+        .feature-grid {{ grid-template-columns: 1fr; }}
+    }}
     .small-note {{ color: #657286; font-size:  .88rem; }}
     div[data-testid="stMetric"] {{
         background: white; padding: 14px; border-radius: 12px;
@@ -416,21 +443,22 @@ if menu == "Dashboard":
     )
 
     st.subheader("Fitur Utama")
-    feature_cols = st.columns(2)
-    feature_list = [
-        ("📂 Upload Data Audit", "Mengimpor data transaksi dari Excel atau CSV."),
-        ("🔎 Pemeriksaan Data", "Memeriksa data kosong, duplikat, outlier, dan debit-kredit."),
-        ("📊 Analisis Anggaran", "Membandingkan anggaran dengan realisasi."),
-        ("🕵️ Fraud Detection", "Menandai pola transaksi yang membutuhkan pemeriksaan lanjutan."),
-        ("⚠️ Risk Assessment", "Memberikan penilaian tingkat risiko awal."),
-        ("🤖 AI Audit Analysis", "Menyusun analisis dan rekomendasi berbantuan AI."),
-        ("📝 Ringkasan Temuan", "Merangkum hasil pemeriksaan data."),
-        ("📥 Download Laporan", "Mengunduh hasil pemeriksaan ke dalam Excel."),
-    ]
-    for i, (title, desc) in enumerate(feature_list):
-        with feature_cols[i % 2]:
-            st.markdown(f"**{title}**")
-            st.caption(desc)
+    st.markdown(
+        """
+        <div class="feature-grid">
+          <div class="feature-item"><div class="feature-icon">📂</div><div><p class="feature-title">Upload Data Audit</p><p class="feature-desc">Mengimpor data transaksi dari Excel atau CSV.</p></div></div>
+          <div class="feature-item"><div class="feature-icon">📋</div><div><p class="feature-title">Informasi Data</p><p class="feature-desc">Melihat struktur, tipe, dan statistik data.</p></div></div>
+          <div class="feature-item"><div class="feature-icon">🔎</div><div><p class="feature-title">Pemeriksaan Data Audit</p><p class="feature-desc">Memeriksa data kosong, duplikat, outlier, serta debit dan kredit.</p></div></div>
+          <div class="feature-item"><div class="feature-icon">📊</div><div><p class="feature-title">Analisis Anggaran dan Realisasi</p><p class="feature-desc">Membandingkan nilai anggaran dengan realisasi.</p></div></div>
+          <div class="feature-item"><div class="feature-icon">🕵️</div><div><p class="feature-title">Fraud Detection</p><p class="feature-desc">Menandai pola transaksi yang perlu ditinjau lebih lanjut.</p></div></div>
+          <div class="feature-item"><div class="feature-icon">⚠️</div><div><p class="feature-title">Risk Assessment</p><p class="feature-desc">Memberikan penilaian tingkat risiko awal.</p></div></div>
+          <div class="feature-item"><div class="feature-icon">📝</div><div><p class="feature-title">Ringkasan Temuan Audit</p><p class="feature-desc">Merangkum hasil pemeriksaan data.</p></div></div>
+          <div class="feature-item"><div class="feature-icon">🤖</div><div><p class="feature-title">AI Audit Analysis</p><p class="feature-desc">Menyusun analisis dan rekomendasi berbantuan AI.</p></div></div>
+          <div class="feature-item"><div class="feature-icon">📥</div><div><p class="feature-title">Download Laporan Audit</p><p class="feature-desc">Mengunduh hasil pemeriksaan dalam format Excel.</p></div></div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
     st.subheader("Alur Penggunaan")
     st.info(

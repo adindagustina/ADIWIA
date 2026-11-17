@@ -1,4 +1,256 @@
 
+# =====================================================
+# DASHBOARD ADIWIA
+# =====================================================
+
+st.markdown("""
+<style>
+.dashboard-header {
+    background: linear-gradient(120deg, #101D35, #243B5A);
+    padding: 28px;
+    border-radius: 15px;
+    color: white;
+    margin-bottom: 25px;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 17px;
+}
+
+.logo-icon {
+    width: 68px;
+    height: 68px;
+    background: linear-gradient(135deg, #D6B66D, #F3DFA5);
+    border-radius: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #101D35;
+    font-size: 35px;
+    font-weight: 800;
+    font-family: Georgia, serif;
+}
+
+.logo-title {
+    font-size: 29px;
+    font-weight: 800;
+    letter-spacing: 3px;
+    margin: 0;
+}
+
+.logo-subtitle {
+    font-size: 13px;
+    color: #D8DFE9;
+    margin-top: 5px;
+}
+
+.metric-card {
+    background: white;
+    border: 1px solid #E5E9F0;
+    border-radius: 12px;
+    padding: 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+
+.metric-label {
+    color: #64748B;
+    font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.metric-value {
+    color: #14243D;
+    font-size: 27px;
+    font-weight: 750;
+}
+
+.section-title {
+    color: #14243D;
+    font-size: 19px;
+    font-weight: 700;
+    margin-top: 15px;
+    margin-bottom: 15px;
+}
+
+</style>
+""", unsafe_allow_html=True)
+
+
+# -----------------------------------------------------
+# LOGO DAN HEADER
+# -----------------------------------------------------
+
+st.markdown("""
+<div class="dashboard-header">
+    <div class="logo-container">
+        <div class="logo-icon">A</div>
+        <div>
+            <div class="logo-title">ADIWIA</div>
+            <div class="logo-subtitle">
+                Asisten Digital Audit Widianti & Adinda
+            </div>
+            <div class="logo-subtitle">
+                Artificial Intelligence for Audit Assistance
+            </div>
+        </div>
+    </div>
+</div>
+""", unsafe_allow_html=True)
+
+
+# -----------------------------------------------------
+# DASHBOARD
+# -----------------------------------------------------
+
+st.subheader("Dashboard Audit")
+st.caption("Ringkasan informasi dan hasil pemeriksaan data keuangan.")
+
+
+if "df" in locals() and df is not None:
+
+    # Menghitung informasi data
+    total_transaksi = len(df)
+    total_kolom = len(df.columns)
+    total_data_kosong = int(df.isna().sum().sum())
+    total_duplikat = int(df.duplicated().sum())
+
+    # Menghitung outlier menggunakan IQR
+    total_outlier = 0
+
+    for col in df.select_dtypes(include="number").columns:
+        Q1 = df[col].quantile(0.25)
+        Q3 = df[col].quantile(0.75)
+        IQR = Q3 - Q1
+
+        if IQR > 0:
+            batas_bawah = Q1 - 1.5 * IQR
+            batas_atas = Q3 + 1.5 * IQR
+
+            total_outlier += int(
+                ((df[col] < batas_bawah) |
+                 (df[col] > batas_atas)).sum()
+            )
+
+    # Menghitung jumlah temuan
+    total_temuan = 0
+
+    if "findings_df" in locals() and isinstance(findings_df, pd.DataFrame):
+        total_temuan = len(findings_df)
+
+    # -------------------------------------------------
+    # KARTU RINGKASAN
+    # -------------------------------------------------
+
+    st.markdown('<div class="section-title">Ringkasan Data Audit</div>',
+                unsafe_allow_html=True)
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Total Transaksi", f"{total_transaksi:,}")
+
+    with col2:
+        st.metric("Jumlah Kolom", f"{total_kolom:,}")
+
+    with col3:
+        st.metric("Total Temuan", f"{total_temuan:,}")
+
+    col4, col5, col6 = st.columns(3)
+
+    with col4:
+        st.metric("Data Kosong", f"{total_data_kosong:,}")
+
+    with col5:
+        st.metric("Data Duplikat", f"{total_duplikat:,}")
+
+    with col6:
+        st.metric("Data Outlier", f"{total_outlier:,}")
+
+    st.divider()
+
+    # -------------------------------------------------
+    # GRAFIK TEMUAN AUDIT
+    # -------------------------------------------------
+
+    st.markdown('<div class="section-title">Grafik Hasil Pemeriksaan</div>',
+                unsafe_allow_html=True)
+
+    ringkasan = pd.DataFrame({
+        "Jenis Pemeriksaan": [
+            "Data Kosong",
+            "Data Duplikat",
+            "Data Outlier"
+        ],
+        "Jumlah Temuan": [
+            total_data_kosong,
+            total_duplikat,
+            total_outlier
+        ]
+    })
+
+    fig = px.bar(
+        ringkasan,
+        x="Jenis Pemeriksaan",
+        y="Jumlah Temuan",
+        text="Jumlah Temuan",
+        color="Jenis Pemeriksaan",
+        color_discrete_sequence=[
+            "#243B5A",
+            "#C5A45D",
+            "#7186A5"
+        ],
+        title="Ringkasan Temuan Pemeriksaan Data"
+    )
+
+    fig.update_layout(
+        showlegend=False,
+        plot_bgcolor="white",
+        paper_bgcolor="white",
+        font=dict(color="#243B5A"),
+        yaxis_title="Jumlah",
+        xaxis_title="",
+        margin=dict(t=50, b=20)
+    )
+
+    fig.update_traces(
+        textposition="outside"
+    )
+
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.divider()
+
+    # -------------------------------------------------
+    # STATUS PEMERIKSAAN
+    # -------------------------------------------------
+
+    st.markdown('<div class="section-title">Status Pemeriksaan Audit</div>',
+                unsafe_allow_html=True)
+
+    if total_data_kosong > 0 or total_duplikat > 0 or total_outlier > 0 or total_temuan > 0:
+
+        st.warning(
+            "Terdapat data yang memerlukan pemeriksaan dan tindak lanjut lebih lanjut."
+        )
+
+    else:
+
+        st.success(
+            "Tidak ditemukan indikasi masalah berdasarkan pemeriksaan awal."
+        )
+
+    st.caption(
+        "Catatan: Hasil pemeriksaan merupakan indikasi awal dan tetap memerlukan verifikasi auditor."
+    )
+
+else:
+
+    st.info(
+        "Silakan unggah file Excel terlebih dahulu untuk menampilkan Dashboard ADIWIA."
+    )
+
 import os
 import time
 from io import BytesIO

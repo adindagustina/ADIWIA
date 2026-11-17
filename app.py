@@ -55,8 +55,6 @@ SVG_ICONS = {
     "Download Laporan Audit": _stroke('<path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/><path d="M12 3v12M7 10l5 5 5-5"/>'),
 }
 
-MENU_ITEMS = list(SVG_ICONS.keys())
-
 
 def svg_data_uri(inner, color):
     svg = (
@@ -130,16 +128,8 @@ st.markdown(
         background: rgba(255,255,255,.07);
     }}
     /* sembunyikan bulatan radio */
-    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:not(:has(p)),
-    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-of-type:not(:has(p)),
-    [data-testid="stSidebar"] [data-baseweb="radio"] > div:not(:has(p)) {{
+    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child {{
         display: none !important;
-        width: 0 !important; height: 0 !important;
-        margin: 0 !important; padding: 0 !important;
-        opacity: 0 !important; visibility: hidden !important;
-    }}
-    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:has(p) {{
-        margin-left: 0 !important; padding-left: 0 !important;
     }}
     /* kotak ikon */
     [data-testid="stSidebar"] div[role="radiogroup"] > label::before {{
@@ -854,7 +844,7 @@ elif menu == "AI Audit Analysis":
             st.markdown(st.session_state.ai_result)
 
 
-menu == "Download Laporan Audit":
+elif menu == "Download Laporan Audit":
     st.title("📥 Download Laporan Audit")
     if data is None:
         st.warning("Silakan unggah data terlebih dahulu.")

@@ -55,6 +55,8 @@ SVG_ICONS = {
     "Download Laporan Audit": _stroke('<path d="M4 15v4a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-4"/><path d="M12 3v12M7 10l5 5 5-5"/>'),
 }
 
+MENU_ITEMS = list(SVG_ICONS.keys())
+
 
 def svg_data_uri(inner, color):
     svg = (

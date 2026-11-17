@@ -854,7 +854,7 @@ elif menu == "AI Audit Analysis":
             st.markdown(st.session_state.ai_result)
 
 
-elif menu == "Download Laporan Audit":
+menu == "Download Laporan Audit":
     st.title("📥 Download Laporan Audit")
     if data is None:
         st.warning("Silakan unggah data terlebih dahulu.")

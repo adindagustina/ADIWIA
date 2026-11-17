@@ -1,6 +1,7 @@
 import os
 import time
 from io import BytesIO
+from urllib.parse import quote
 
 import pandas as pd
 import plotly.express as px
@@ -25,47 +26,130 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-NAVY = "#14243A"
+NAVY = "#0B1B36"          # warna sidebar (lebih gelap, sesuai desain baru)
+NAVY_DARK = "#08142B"
 NAVY_LIGHT = "#243F60"
-GOLD = "#D6AE58"
+GOLD = "#F1C453"          # emas utama (judul menu & menu aktif)
+GOLD_DARK = "#D6A23A"
 LIGHT_BG = "#F4F6F9"
+
+
+# ---------------------------------------------------------
+# Ikon menu (SVG garis) -> dipakai lewat CSS
+# ---------------------------------------------------------
+SVG_ICONS = {
+    "Dashboard": '<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>',
+    "Upload Data Audit": '<polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.3"/>',
+    "Informasi Data": '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
+    "Pemeriksaan Data Audit": '<circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>',
+    "Analisis Anggaran dan Realisasi": '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
+    "Fraud Detection": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><line x1="12" y1="8" x2="12" y2="13"/><line x1="12" y1="16.5" x2="12.01" y2="16.5"/>',
+    "Risk Assessment": '<path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><polyline points="9 12 11 14 15 10"/>',
+    "Ringkasan Temuan Audit": '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/>',
+    "AI Audit Analysis": '<rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><line x1="9" y1="1" x2="9" y2="5"/><line x1="15" y1="1" x2="15" y2="5"/><line x1="9" y1="19" x2="9" y2="23"/><line x1="15" y1="19" x2="15" y2="23"/><line x1="1" y1="9" x2="5" y2="9"/><line x1="1" y1="15" x2="5" y2="15"/><line x1="19" y1="9" x2="23" y2="9"/><line x1="19" y1="15" x2="23" y2="15"/>',
+    "Download Laporan Audit": '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>',
+}
+
+MENU_ITEMS = list(SVG_ICONS.keys())
+
+
+def svg_data_uri(inner, color):
+    svg = (
+        '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" '
+        f'stroke="{color}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+        f"{inner}</svg>"
+    )
+    return "url(\"data:image/svg+xml;utf8," + quote(svg) + "\")"
+
+
+def build_menu_icon_css():
+    css = []
+    sel = '[data-testid="stSidebar"] div[role="radiogroup"] > label'
+    for i, name in enumerate(MENU_ITEMS, start=1):
+        normal = svg_data_uri(SVG_ICONS[name], "#FFFFFF")
+        active = svg_data_uri(SVG_ICONS[name], GOLD)
+        css.append(f"{sel}:nth-child({i})::before {{ background-image: {normal}; }}")
+        css.append(f"{sel}:nth-child({i}):has(input:checked)::before {{ background-image: {active}; }}")
+    return "\n".join(css)
+
 
 st.markdown(
     f"""
     <style>
     .stApp {{ background-color: {LIGHT_BG}; }}
-    [data-testid="stSidebar"] {{ background: linear-gradient(180deg, {NAVY}, #203A59); }}
+
+    /* ---------- SIDEBAR ---------- */
+    [data-testid="stSidebar"] {{
+        background: linear-gradient(180deg, {NAVY_DARK}, {NAVY});
+    }}
     [data-testid="stSidebar"] * {{ color: white !important; }}
+
+    /* ---------- LOGO ---------- */
     .aw-logo {{
-        width: 82px; height: 82px; margin: 6px auto 14px auto;
-        position: relative; display: flex; justify-content: center;
-        align-items: center; background: #101D30;
-        border: 1.5px solid {GOLD}; border-radius: 22px;
-        box-shadow: 0 7px 18px rgba(0,0,0,.24); overflow: hidden;
+        width: 104px; height: 104px; margin: 10px auto 16px auto;
+        display: flex; justify-content: center; align-items: center;
+        background: linear-gradient(135deg, #F7D774 0%, {GOLD} 45%, {GOLD_DARK} 100%);
+        border-radius: 28px;
+        box-shadow: 0 8px 20px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.35);
     }}
-    .aw-logo:before {{
-        content: ""; position: absolute; inset: 6px;
-        border: 1px solid rgba(214,174,88,.35); border-radius: 16px;
+    .aw-logo span {{
+        color: {NAVY} !important;
+        font-family: 'Times New Roman', Georgia, serif;
+        font-size: 56px; font-weight: 700; letter-spacing: -4px;
+        line-height: 1; margin-left: -4px;
     }}
-    .aw-logo .aw-a {{
-        color: #F7F3E9; font-family: Georgia, 'Times New Roman', serif;
-        font-size: 53px; font-weight: 700; font-style: italic;
-        position: absolute; left: 12px; top: 4px; z-index: 2;
-        line-height: 1; text-shadow: 2px 2px 0 rgba(0,0,0,.18);
+    .aw-title {{
+        text-align: center; font-size: 28px; font-weight: 800;
+        letter-spacing: 1px; margin: 4px 0 2px 0; color: white !important;
     }}
-    .aw-logo .aw-w {{
-        color: #E2BD70; font-family: Georgia, 'Times New Roman', serif;
-        font-size: 48px; font-weight: 700; font-style: italic;
-        position: absolute; right: 7px; bottom: 4px; z-index: 1;
-        line-height: 1; text-shadow: 2px 2px 0 rgba(0,0,0,.22);
+    .aw-sub {{
+        text-align: center; font-size: 14px; line-height: 1.6;
+        margin: 0; color: #E8EDF4 !important;
     }}
-    .aw-logo .aw-line {{
-        position: absolute; width: 51px; height: 2px;
-        background: linear-gradient(90deg, transparent, {GOLD}, transparent);
-        transform: rotate(-48deg); opacity: .95; z-index: 3;
+    .aw-divider {{
+        height: 1px; background: rgba(255,255,255,.28); margin: 18px 4px 20px 4px;
     }}
+    .aw-menu-title {{
+        color: {GOLD} !important; font-weight: 700; font-size: 16px;
+        letter-spacing: .5px; margin: 0 0 8px 6px;
+    }}
+    .aw-menu-title * {{ color: {GOLD} !important; }}
+
+    /* ---------- MENU UTAMA (radio -> menu berikon) ---------- */
+    [data-testid="stSidebar"] div[role="radiogroup"] {{ gap: 2px; }}
+    [data-testid="stSidebar"] div[role="radiogroup"] > label {{
+        display: flex; align-items: center; gap: 14px;
+        padding: 10px 10px; border-radius: 10px; cursor: pointer;
+        width: 100%; transition: background .15s ease;
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:hover {{
+        background: rgba(255,255,255,.07);
+    }}
+    /* sembunyikan bulatan radio */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label > div:first-child {{
+        display: none !important;
+    }}
+    /* kotak ikon */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label::before {{
+        content: ""; flex: 0 0 24px; width: 24px; height: 24px;
+        background-repeat: no-repeat; background-position: center;
+        background-size: 22px 22px;
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] > label p {{
+        font-size: 16px; font-weight: 500; margin: 0;
+    }}
+    /* menu aktif -> emas */
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) {{
+        background: rgba(241,196,83,.10);
+    }}
+    [data-testid="stSidebar"] div[role="radiogroup"] > label:has(input:checked) p {{
+        color: {GOLD} !important; font-weight: 700;
+    }}
+    {build_menu_icon_css()}
+
+    /* ---------- KONTEN UTAMA ---------- */
     .hero {{
-        background: linear-gradient(115deg, #101D30 0%, {NAVY} 58%, #34516F 100%);
+        background: linear-gradient(115deg, #08142B 0%, {NAVY} 58%, #34516F 100%);
         color: white; padding: 30px 32px; border-radius: 18px; margin-bottom: 22px;
         box-shadow: 0 8px 22px rgba(20,36,58,.12);
     }}
@@ -384,35 +468,19 @@ def create_excel_report(data, missing_data, duplicate_data, outlier_data, fraud_
 with st.sidebar:
     st.markdown(
         """
-        <div class="aw-logo">
-            <span class="aw-a">A</span>
-            <span class="aw-w">W</span>
-            <span class="aw-line"></span>
-        </div>
+        <div class="aw-logo"><span>AW</span></div>
+        <div class="aw-title">ADIWIA</div>
+        <p class="aw-sub">Asisten Digital Audit<br>Widianti &amp; Adinda</p>
+        <div class="aw-divider"></div>
+        <div class="aw-menu-title">MENU UTAMA</div>
         """,
         unsafe_allow_html=True,
     )
-    st.markdown("<h3 style='text-align:center;color:white;'>ADIWIA</h3>", unsafe_allow_html=True)
-    st.markdown(
-        "<p style='text-align:center;color:#D6AE58;font-size:12px;'>Asisten Digital Audit<br>Widianti & Adinda</p>",
-        unsafe_allow_html=True,
-    )
-    st.divider()
 
     menu = st.radio(
         "MENU UTAMA",
-        [
-            "Dashboard",
-            "Upload Data Audit",
-            "Informasi Data",
-            "Pemeriksaan Data Audit",
-            "Analisis Anggaran dan Realisasi",
-            "Fraud Detection",
-            "Risk Assessment",
-            "Ringkasan Temuan Audit",
-            "AI Audit Analysis",
-            "Download Laporan Audit",
-        ],
+        MENU_ITEMS,
+        label_visibility="collapsed",
     )
     st.divider()
     st.caption("ADIWIA • Asisten Pendukung Audit")
